@@ -9,7 +9,7 @@
     body { background: linear-gradient(120deg, #f6d365 0%, #fda085 100%); min-height: 100vh; }
     .container { max-width: 400px; margin-top: 10vh; background: #fff8; border-radius: 20px; box-shadow: 0 8px 32px #0002; padding: 2rem; }
     .title { font-size: 2rem; font-weight: bold; margin-bottom: 1.5rem; text-align: center; }
-    .result { margin-top: 1.5rem; font-size: 1.1rem; color: #333; }
+    .result { margin-top: 1.5rem; font-size: 1.1rem; color: #333; min-height: 2em;}
   </style>
 </head>
 <body>
@@ -25,15 +25,31 @@
     <div class="result" id="result"></div>
   </div>
   <script>
-    document.getElementById('queryForm').onsubmit = function(e) {
+    document.getElementById('queryForm').onsubmit = async function(e) {
       e.preventDefault();
       const id = document.getElementById('idcard').value.trim();
+      const resultDiv = document.getElementById('result');
       if (!id) {
-        document.getElementById('result').innerText = '请输入身份证号码';
+        resultDiv.innerText = '请输入身份证号码';
         return;
       }
-      // 这里可以调用后端API，暂时只做演示
-      document.getElementById('result').innerHTML = `<b>你输入的身份证号：</b><br>${id}`;
+      resultDiv.innerText = '查询中...';
+      try {
+        // 这里填写你的 Cloudflare Worker 地址
+        const resp = await fetch('https://polished-firefly-93b9.winskyrobert.workers.dev/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_card: id })
+        });
+        if (!resp.ok) {
+          resultDiv.innerText = '查询失败，服务器返回错误';
+          return;
+        }
+        const data = await resp.json();
+        resultDiv.innerText = data.result || JSON.stringify(data) || '未查询到结果';
+      } catch (err) {
+        resultDiv.innerText = '查询失败，请稍后再试';
+      }
     }
   </script>
 </body>
