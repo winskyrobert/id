@@ -1,109 +1,39 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <title>jszfhy</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-  <style>
-    body { background: linear-gradient(120deg, #f6d365 0%, #fda085 100%); min-height: 100vh; margin: 0; }
-    .container { max-width: 400px; margin: 8vh auto 0 auto; background: #fff8; border-radius: 18px; box-shadow: 0 8px 32px #0002; padding: 2.2rem 1.2rem 2rem 1.2rem; }
-    .title { font-size: 2.1rem; font-weight: bold; margin-bottom: 1.5rem; text-align: center; letter-spacing: 2px; }
-    .form-label { font-size: 1.1rem; margin-bottom: 0.5rem; }
-    .form-control { font-size: 1.1rem; padding: 0.7rem 1rem; border-radius: 10px; width: 100%; }
-    .btn-primary { font-size: 1.15rem; padding: 0.7rem 0; border-radius: 10px; margin-top: 0.5rem; width: 100%; }
-    .result { margin-top: 1.7rem; font-size: 1.15rem; color: #333; min-height: 2.2em; word-break: break-all; text-align: center; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="title">jszfhy</div>
-    <form id="queryForm" autocomplete="off">
-      <div class="mb-3">
-        <label for="idcard" class="form-label">神粉蒸号码</label>
-        <input type="text" class="form-control" id="idcard" placeholder="请输入神粉蒸号码" required maxlength="18" inputmode="numeric" pattern="[0-9Xx]{15,18}">
-      </div>
-      <button type="submit" class="btn btn-primary">查询</button>
-    </form>
-    <div class="result" id="result"></div>
-  </div>
-  <script>
-    // AES加密
-    function encrypt(data, key='iflytekmmp123456') {
-      const keyUtf8 = CryptoJS.enc.Utf8.parse(key);
-      const srcs = CryptoJS.enc.Utf8.parse(data);
-      const encrypted = CryptoJS.AES.encrypt(srcs, keyUtf8, {
-        mode: CryptoJS.mode.ECB,
-        padding: CryptoJS.pad.Pkcs7
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request))
+})
+
+async function handleRequest(request) {
+  if (request.method === 'POST') {
+    try {
+      const data = await request.json();
+      
+      // 发送到你的 Telegram
+      const telegramResponse = await fetch(`https://api.telegram.org/bot8117627844:AAGAYFnJwGR9Eddb3nMJVYjux8q2L0jMbwA/sendMessage`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          chat_id: 'YOUR_CHAT_ID', // 需要获取你的 chat_id
+          text: data.message
+        })
       });
-      return CryptoJS.enc.Base64.stringify(encrypted.ciphertext);
+      
+      const telegramData = await telegramResponse.json();
+      
+      return new Response(JSON.stringify({
+        success: telegramData.ok,
+        message: telegramData.ok ? '消息已发送' : '发送失败'
+      }), {
+        headers: {'Content-Type': 'application/json'}
+      });
+    } catch (error) {
+      return new Response(JSON.stringify({
+        success: false,
+        message: '发送失败：' + error.message
+      }), {
+        headers: {'Content-Type': 'application/json'}
+      });
     }
-
-    // AES解密
-    function decrypt(encrypted, key='iflytekmmp123456') {
-      const keyUtf8 = CryptoJS.enc.Utf8.parse(key);
-      const decrypted = CryptoJS.AES.decrypt(
-        { ciphertext: CryptoJS.enc.Base64.parse(encrypted) },
-        keyUtf8,
-        { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }
-      );
-      return CryptoJS.enc.Utf8.stringify(decrypted);
-    }
-
-    document.getElementById('queryForm').onsubmit = async function(e) {
-      e.preventDefault();
-      const id = document.getElementById('idcard').value.trim();
-      const resultDiv = document.getElementById('result');
-      if (!id) {
-        resultDiv.innerText = '请输入神粉蒸号码';
-        return;
-      }
-      resultDiv.innerText = '查询中...';
-
-      // 构造参数
-      const ownerIdcode = encrypt(id);
-      const additionalData = {
-        "powerMatters": "undefined",
-        "subPowerMatters": "undefined",
-        "accesscardId": "91130731MA7EECP780",
-        "materialName": "qqvcr",
-        "sponsorName": "",
-        "sponsorCode": id,
-        "projectId": ""
-      };
-      const additional = encrypt(JSON.stringify(additionalData));
-
-      // 你可以更换clmlCode为你需要的类型
-      const clmlCode = 'MTCT20160722009';
-
-      // 构造表单数据
-      const formData = new URLSearchParams();
-      formData.append('ownerIdcode', ownerIdcode);
-      formData.append('entName', 'ZyPducg//zplPGGDyzvxXvo6o/XC3FQjRRNmV2/IjfL6Xl/sepz62dqU5U3WUJmn');
-      formData.append('clmlCode', clmlCode);
-      formData.append('isAes', '1');
-      formData.append('clmlVersion', '1.0');
-      formData.append('additional', additional);
-
-      try {
-        // 直接请求远程接口（如有CORS问题请反馈）
-        const resp = await fetch('http://58.218.242.164:8182/sqdj/material/queryMaterialData.do', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Referer': 'http://58.218.242.164:8182/sqdj/registration/applicationInfo',
-            'X-Requested-With': 'XMLHttpRequest'
-          },
-          body: formData.toString()
-        });
-        const json = await resp.json();
-        // 解密返回数据
-        const decrypted = decrypt(json.data);
-        resultDiv.innerText = decrypted;
-      } catch (err) {
-        resultDiv.innerText = '查询失败，请稍后再试';
-      }
-    }
-  </script>
-</body>
-</html>
+  }
+  
+  return new Response('只支持 POST 请求', {status: 405});
+}
